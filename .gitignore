@@ -1,0 +1,19 @@
+# Environments & caches
+.venv/
+__pycache__/
+*.pyc
+*.ipynb_checkpoints/
+
+# Data & large artifacts (recreated by pipeline)
+data/
+!data/.gitkeep
+*.csv
+*.parquet
+*.feather
+*.zip
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
