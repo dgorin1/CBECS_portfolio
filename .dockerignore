@@ -7,3 +7,8 @@ data/
 *.feather
 *.zip
 .git
+
+# editor backups
+*.save
+*.bak
+*~
