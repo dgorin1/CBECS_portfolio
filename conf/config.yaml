@@ -1,7 +1,9 @@
 # conf/config.yaml
 
+# Directories
 data:
   raw_dir: "data/raw"
+  processed_dir: "data/processed"
 
 datasets:
   - year: 2018

@@ -20,7 +20,7 @@ for dataset in CFG["datasets"]:
 
     # Get CSV URL from yaml
     CSV_URL = dataset["csv_url"]
-    print(f"Downloading {CSV_URL} -> {OUT_PATH}")
+    print(f"Downloading {CSV_URL} -> {OUT_PATH}...")
 
     # download data..
     with requests.get(CSV_URL, stream=True, timeout=60) as r:
@@ -32,4 +32,4 @@ for dataset in CFG["datasets"]:
                 if chunk:
                     f.write(chunk)
 
-print("Done downloading data")
+print("Done downloading data!")
