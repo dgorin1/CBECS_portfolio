@@ -1,0 +1,11 @@
+# conf/config.yaml
+
+data:
+  raw_dir: "data/raw"
+
+datasets:
+  - year: 2018
+    csv_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
+  
+  - year: 2012
+    csv_url: "https://www.eia.gov/consumption/commercial/data/2012/xls/2012_public_use_data_aug2016.csv"

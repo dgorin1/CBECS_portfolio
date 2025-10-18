@@ -1,0 +1,35 @@
+# pipeline/01_download.py
+import pathlib
+import requests
+import yaml
+
+# --- load config ---
+# 1) Where to put the file (relative to your repo root)
+CFG = yaml.safe_load(open("conf/config.yaml"))
+
+# Create a filepath
+RAW_DIR = pathlib.Path(CFG["data"]["raw_dir"])
+
+# Make directory if doesn't exist and name the output raw file for 2018
+RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+for dataset in CFG["datasets"]:
+    year = int(dataset["year"])
+
+    OUT_PATH = RAW_DIR / f"cbecs_{year}_microdata.csv"
+
+    # Get CSV URL from yaml
+    CSV_URL = dataset["csv_url"]
+    print(f"Downloading {CSV_URL} -> {OUT_PATH}")
+
+    # download data..
+    with requests.get(CSV_URL, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(OUT_PATH, "wb") as f:
+            for chunk in r.iter_content(2**20):  # ~ read in 1 MB chunks to preserve RAM on less powerful machines
+
+                # Ignore blank chunks
+                if chunk:
+                    f.write(chunk)
+
+print("Done downloading data")
