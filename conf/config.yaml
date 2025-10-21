@@ -28,6 +28,53 @@ columns:
   num_floors: "NFLOOR" # Number of floors
   year_build: "YRCONC" # Year the building was built
   total_energy_use_BTU: "MFBTU" # Total energy us
+  cool_roof: "RFCOOL" # Cool roof tech?
+  num_floors: "NFLOOR" # Number of floors.. need to deal with strange schema here.
+  ftc_height: "FLCEILHT" # floor-to-ceiling height
+  attic: "ATTIC" # Attaic
+  elevator: "NELVTR" # Number of elevators (will need to adjust NA to 0)
+  escalator: "NESLTR" # Number of escalators (will need to adjust NA to 0)
+  window_upgrade: "RENWIN" # Have windows been replaced since 2000? (need to adjust NA to no)
+  HVAC_upgrade: "RENHVC" # Has the hvac been replaced since 2000?
+  lighting_upgrade: "RENLGT" # Has the lighting been updated since 2000?
+  plumbing_upgrade: "RENPLB" # Has the plumbing been updated since 2000?
+  insulation_upgrade: "RENINS" # Has the insulation been udpated since 2000?
+  dry_cleaning_onsite: "DRYCL" # Is there dry cleaning on site?
+  vacancy: "VACANT" # Is the building completely vacant?
+  manufacturing: "MANIND" # Is the building used in manufacturing?
+  num_businesses: "NOCC" # Number of businesses in the building?
+  purchase_power: "WHOPPR" # who makes decisions about purchases of energy-related equipment? 
+  months_of_use: "MONUSE" # Number of months used 
+  percent_occupy: "OCCUPYP" # Percent occupy
+  open_hours: "WKHRS" # Total hours open per week
+  num_employees: "NWKER" # Number of employees that work in building
+  energy_heating: "HT1" # Was energy used for heating the building?
+  air_conditioning: "COOL" # Was energy used for cooling
+  water_heating: "WATR" # Was energy used for water heating?
+  energy_at_all: "EGYUSED" # Was any energy used in the building at all?
+  percent_heated: "HEATP" # Percent of building heated
+  electricity_for_heating: "ELHT1" # Electricity used for main heating 
+  natural_gas_for_heating: "NGHT1" # Natural gas used for main heating 
+  fuel_oil_for_heating: "FKHT1" # Fuel oil used for main heating 
+  propane_for_heating: "PRHT1" # Propane used for main heating 
+  district_steam_for_heating: "STHT1" # District steam used for main heating
+  district_hot_water_for_heating: "HWHT1" # District hot water used for main heating 
+  wood_for_heating: "WOHT1" # Wood used for main heating 
+  coal_for_heating: "COHT1" # Coal used for main heating 
+  solar_for_heating: "SOHT1" # Solar used for main heating 
+  other_for_heating: "OTHT1" # Other source used for main heating 
+  heat_replaced: "NWMNHT" # Has heat been replaced since 2000?
+  smart_thermostat: "SMRTTHRM" # Smart thermostat in place?
+  HVAC_maint: "MAINT" # Regular HVAC maintenance?
+  energy_plan: "ENRGYPLN" # Does the building have an anergy plan that is kept to?
+  cold_storage_space: "RFGSTP" # Percent of building used for cold storage
+  server_num: "SERVERN" # Are there computer servers stored here? How many?
+  data_center: "DATACNTR" # Is this a data center?
+  percent_lit: "LTZHRP" # Percent of building lit
+  percent_LED: "LEDP" # Percent of building lit by other light
+
+
+
 
 keep_categorical:
   - "REGION"
@@ -39,9 +86,23 @@ keep_categorical:
   - "RFCNS"
   - "RFTILT"
   - "BLDSHP"
-  
+  - "RFCOOL"
+  - "ATTIC"
+  - "NELVTR"
+  - "NESLTR"
+  - "RENWIN"
+  - "RENHVC"
+
+
+
+
+
+
 keep_numeric:
   - "SQFT"
   - "GLSSPC"
   - "YRCONC"
   - "MFBTU"
+  - "NFLOOR"
+  - "FLCEILHT"
+  - "NELVTR"
