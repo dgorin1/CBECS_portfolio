@@ -11,3 +11,37 @@ datasets:
   
   - year: 2012
     csv_url: "https://www.eia.gov/consumption/commercial/data/2012/xls/2012_public_use_data_aug2016.csv"
+
+columns:
+  id: "PUBID" # Unique identifier
+  region: "REGION" # Region
+  cencus_division: "CENDIV" # Cencus division
+  main_building_activity: "PBA" # Main building use
+  main_building_activity_specific: "PBAPLUS"
+  climate_zone: "PUBCLIM" # Climate Region
+  sqft: "SQFT" # square feet of building
+  wall_material: "WLCNS" # Material used for walls
+  roof_material: "RFCNS" # Material used for roofs
+  roof_tilt: "RFTILT" # Whether or not roof is tilted
+  building_shape: "BLDSHP" # Shape of building
+  percent_ext_glass: "GLSSPC" # Percent of glass on the exterior
+  num_floors: "NFLOOR" # Number of floors
+  year_build: "YRCONC" # Year the building was built
+  total_energy_use_BTU: "MFBTU" # Total energy us
+
+keep_categorical:
+  - "REGION"
+  - "CENDIV"
+  - "PBA"
+  - "PBAPLUS"
+  - "PUBCLIM"
+  - "WLCNS"
+  - "RFCNS"
+  - "RFTILT"
+  - "BLDSHP"
+  
+keep_numeric:
+  - "SQFT"
+  - "GLSSPC"
+  - "YRCONC"
+  - "MFBTU"
