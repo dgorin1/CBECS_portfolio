@@ -1,6 +1,4 @@
 # conf/config.yaml
-
-# Directories
 data:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
@@ -8,101 +6,73 @@ data:
 datasets:
   - year: 2018
     csv_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
-  
-  - year: 2012
-    csv_url: "https://www.eia.gov/consumption/commercial/data/2012/xls/2012_public_use_data_aug2016.csv"
 
-columns:
-  id: "PUBID" # Unique identifier
-  region: "REGION" # Region
-  cencus_division: "CENDIV" # Cencus division
-  main_building_activity: "PBA" # Main building use
-  main_building_activity_specific: "PBAPLUS"
-  climate_zone: "PUBCLIM" # Climate Region
-  sqft: "SQFT" # square feet of building
-  wall_material: "WLCNS" # Material used for walls
-  roof_material: "RFCNS" # Material used for roofs
-  roof_tilt: "RFTILT" # Whether or not roof is tilted
-  building_shape: "BLDSHP" # Shape of building
-  percent_ext_glass: "GLSSPC" # Percent of glass on the exterior
-  num_floors: "NFLOOR" # Number of floors
-  year_build: "YRCONC" # Year the building was built
-  total_energy_use_BTU: "MFBTU" # Total energy us
-  cool_roof: "RFCOOL" # Cool roof tech?
-  num_floors: "NFLOOR" # Number of floors.. need to deal with strange schema here.
-  ftc_height: "FLCEILHT" # floor-to-ceiling height
-  attic: "ATTIC" # Attaic
-  elevator: "NELVTR" # Number of elevators (will need to adjust NA to 0)
-  escalator: "NESLTR" # Number of escalators (will need to adjust NA to 0)
-  window_upgrade: "RENWIN" # Have windows been replaced since 2000? (need to adjust NA to no)
-  HVAC_upgrade: "RENHVC" # Has the hvac been replaced since 2000?
-  lighting_upgrade: "RENLGT" # Has the lighting been updated since 2000?
-  plumbing_upgrade: "RENPLB" # Has the plumbing been updated since 2000?
-  insulation_upgrade: "RENINS" # Has the insulation been udpated since 2000?
-  dry_cleaning_onsite: "DRYCL" # Is there dry cleaning on site?
-  vacancy: "VACANT" # Is the building completely vacant?
-  manufacturing: "MANIND" # Is the building used in manufacturing?
-  num_businesses: "NOCC" # Number of businesses in the building?
-  purchase_power: "WHOPPR" # who makes decisions about purchases of energy-related equipment? 
-  months_of_use: "MONUSE" # Number of months used 
-  percent_occupy: "OCCUPYP" # Percent occupy
-  open_hours: "WKHRS" # Total hours open per week
-  num_employees: "NWKER" # Number of employees that work in building
-  energy_heating: "HT1" # Was energy used for heating the building?
-  air_conditioning: "COOL" # Was energy used for cooling
-  water_heating: "WATR" # Was energy used for water heating?
-  energy_at_all: "EGYUSED" # Was any energy used in the building at all?
-  percent_heated: "HEATP" # Percent of building heated
-  electricity_for_heating: "ELHT1" # Electricity used for main heating 
-  natural_gas_for_heating: "NGHT1" # Natural gas used for main heating 
-  fuel_oil_for_heating: "FKHT1" # Fuel oil used for main heating 
-  propane_for_heating: "PRHT1" # Propane used for main heating 
-  district_steam_for_heating: "STHT1" # District steam used for main heating
-  district_hot_water_for_heating: "HWHT1" # District hot water used for main heating 
-  wood_for_heating: "WOHT1" # Wood used for main heating 
-  coal_for_heating: "COHT1" # Coal used for main heating 
-  solar_for_heating: "SOHT1" # Solar used for main heating 
-  other_for_heating: "OTHT1" # Other source used for main heating 
-  heat_replaced: "NWMNHT" # Has heat been replaced since 2000?
-  smart_thermostat: "SMRTTHRM" # Smart thermostat in place?
-  HVAC_maint: "MAINT" # Regular HVAC maintenance?
-  energy_plan: "ENRGYPLN" # Does the building have an anergy plan that is kept to?
-  cold_storage_space: "RFGSTP" # Percent of building used for cold storage
-  server_num: "SERVERN" # Are there computer servers stored here? How many?
-  data_center: "DATACNTR" # Is this a data center?
-  percent_lit: "LTZHRP" # Percent of building lit
-  percent_LED: "LEDP" # Percent of building lit by other light
+target:
+  name: "MFBTU"
+  log_name: "LOG_MFBTU"
+  drop_na: true   # drop rows with missing target before anything else
 
+drops:
+  leakage_risks: ["MFEXP","ELBTU","ELCNS","ELEXP","NGBTU","NGCNS","NGEXP",
+                  "MFHTBTU","MFCLBTU","MFVNBTU","MFWTBTU","MFLTBTU","MFCKBTU",
+                  "MFRFBTU","MFOFBTU","MFPCBTU","MFOTBTU","ELHTBTU","ELCLBTU",
+                  "ELVNBTU","ELWTBTU","ELLTBTU","ELCKBTU","ELRFBTU","ELOFBTU",
+                  "ELPCBTU","ELOTBTU","NGHTBTU","NGCLBTU","NGWTBTU","NGCKBTU","NGOTBTU"]
+  obvious: ["SQFTC","ELEVTR","ESCLTR","PUBID","NOCCAT","WKHRSC","NWKERC",
+            "LZHRPC","LOHRPC","LNHRPC"]
+  weight_regex: "FINALWT[0-9]{0,3}"   # regex of columns to drop
 
+fillna:
+  to_0: ["BASEMNT","NELVTR","NESLTR","DRYCL","RWSEAT","PBSEAT","EDSEAT","FDSEAT",
+         "HCBED","RCACP_EL","PKGCP_EL","CHILP_EL","HTPCP_EL","ACWNWP_EL","EVAPP_EL",
+         "OTCLP_EL","CHILP_NG","OTCLP_NG","CHILP_FK","OTCLP_FK","CHILP_PR","OTCLP_PR",
+         "CHILP_ST","OTCLP_ST","CHWTP_CW","OTCLP_OT","SNACKSF","FASTFDSF","CAFSF",
+         "FDPREPSF","XRAYN","RFGRSN","RFGCOMPN","RFGWIN","RFGOPN","RFGCLN","RFGVNN",
+         "RFGICN","RFGSTP","PCTERMN","LAPTPN","MLTMON","TABLETN","SERVERN","LGOFFDEVN",
+         "SMOFFDEVN","WBOARDSN","RGSTRN","ATMN","LTZHRP","LTOHRP","LTNHRP","BULBP",
+         "HALOP","HIDP","LEDP","OTLTP","PKLTN","DAYLTP"]
+  to_1: ["RENOV","FACDST","FACDHW","FACDCW","FACELC"]
+  to_2: ["VACANT","DRVTHRU"]
 
+recode:
+  single_value:
+    # map special → replacement (top-code caps etc.)
+    NELVTR: {sentinel: 995, replace: 30}
+    NESLTR: {sentinel: 995, replace: 10}
+    BASEMNT: {sentinel: 995, replace: 5}
+    FLCEILHT: {sentinel: 995, replace: 50}
+    RWSEAT: {sentinel: 99995, replace: 2000}
+    PBSEAT: {sentinel: 99995, replace: 15000}
+    HCBED: {sentinel: 9995, replace: 250}
+  # multi-coded special values that need featureization
+  nfloor:
+    mid_code: 994
+    top_code: 995
+    mid_replace: 12
+    top_replace: 15
+    add_bins: true   # add NFLOOR_10_14_BIN & NFLOOR_TOP_BIN
 
-keep_categorical:
-  - "REGION"
-  - "CENDIV"
-  - "PBA"
-  - "PBAPLUS"
-  - "PUBCLIM"
-  - "WLCNS"
-  - "RFCNS"
-  - "RFTILT"
-  - "BLDSHP"
-  - "RFCOOL"
-  - "ATTIC"
-  - "NELVTR"
-  - "NESLTR"
-  - "RENWIN"
-  - "RENHVC"
+one_off_fixes:
+  # DRVTHRU: code 5 (“don’t know”) → 2 (“no”)
+  recode_equal:
+    DRVTHRU: {5: 2}
 
+impute_median_with_flag: ["OCCUPYP"]   # median-impute + add *_IMPUTED flag
 
+domain_rules:
+  # HCBED applicable only for hospital/nursing PBA ∈ {16,17}
+  hcbeds:
+    col: "HCBED"
+    pba_col: "PBA"
+    applicable_values: [16, 17]
 
+engineer:
+  seats:
+    cols: ["RWSEAT","PBSEAT","EDSEAT","FDSEAT"]
+    keep_top_flags: ["RWSEAT_TOPCODED","PBSEAT_TOPCODED"]
+    out_total: "SEATS_TOTAL"
+    out_top_any: "SEATS_TOPCODED"
 
-
-
-keep_numeric:
-  - "SQFT"
-  - "GLSSPC"
-  - "YRCONC"
-  - "MFBTU"
-  - "NFLOOR"
-  - "FLCEILHT"
-  - "NELVTR"
+post:
+  # optional: after all rules, drop columns over missing threshold
+  drop_missing_threshold: 0.9   # 0.9 means keep columns with >=10% non-null
