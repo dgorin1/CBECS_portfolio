@@ -4,8 +4,10 @@ data:
   processed_dir: "data/processed"
 
 datasets:
-  - year: 2018
-    csv_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
+  year: 2018
+  data_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
+  codebook_url: https://www.eia.gov/consumption/commercial/data/2018/xls/2018microdata_codebook.xlsx
+
 
 target:
   name: "MFBTU"

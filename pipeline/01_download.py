@@ -13,23 +13,20 @@ RAW_DIR = pathlib.Path(CFG["data"]["raw_dir"])
 # Make directory if doesn't exist and name the output raw file for 2018
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-for dataset in CFG["datasets"]:
-    year = int(dataset["year"])
 
-    OUT_PATH = RAW_DIR / f"cbecs_{year}_microdata.csv"
 
-    # Get CSV URL from yaml
-    CSV_URL = dataset["csv_url"]
-    print(f"Downloading {CSV_URL} -> {OUT_PATH}...")
+year = int(CFG["datasets"]["year"])
 
-    # download data..
-    with requests.get(CSV_URL, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        with open(OUT_PATH, "wb") as f:
-            for chunk in r.iter_content(2**20):  # ~ read in 1 MB chunks to preserve RAM on less powerful machines
+OUT_PATH = RAW_DIR / f"cbecs_{year}_microdata.csv"
 
-                # Ignore blank chunks
-                if chunk:
-                    f.write(chunk)
+# Get CSV URL from yaml
+CSV_URL = CFG["datasets"]["data_url"]
+print(f"Downloading {CSV_URL} -> {OUT_PATH}...")
+
+# download data..
+
+dataset = requests.get(CSV_URL)
+with open(OUT_PATH, 'wb') as f:
+    f.write(dataset.content)
 
 print("Done downloading data!")
