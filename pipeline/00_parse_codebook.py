@@ -45,7 +45,7 @@ def split_numeric_categorical(data: pd.DataFrame):
     - A tuple of lists: (numeric_variables, categorical_variables)
     """
     # Create a boolean mask for rows where 'values' matches a numeric range pattern (e.g., '10 – 20')
-    mask = data["values"].str.match(r"\d.* – \d*.*", na=True)
+    mask = data["values"].str.match(r"\d.*\s*[–—-]\s*\d.*", na=True)
     
     # Further refine the mask: Exclude rows with type 'Char' since they're not numeric
     mask = mask & (data["type"] != "Char")
@@ -58,6 +58,16 @@ def split_numeric_categorical(data: pd.DataFrame):
 
 # Get lists of numeric and categorical variable names
 numeric_names, categorical_names = split_numeric_categorical(data)
+
+# Ensure PKLTN is treated as categorical
+if "PKLTN" in categorical_names:
+    categorical_names.remove("PKLTN")
+if "PKLTN" not in numeric_names:
+    numeric_names.append("PKLTN")
+
+# Exclude PUBID entirely from both lists
+numeric_names = [n for n in numeric_names if n != "PUBID"]
+categorical_names = [n for n in categorical_names if n != "PUBID"]
 
 # Prepare the data to be saved in YAML format
 yaml_data = {

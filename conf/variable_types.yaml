@@ -1,5 +1,4 @@
 categorical_variables:
-- PUBID
 - REGION
 - CENDIV
 - PBA
@@ -375,7 +374,6 @@ categorical_variables:
 - CTSCAN
 - MRI
 - LINACC
-- OUTHOSPPCT
 - OUTSURG
 - LABEQP
 - MCHEQP
@@ -417,8 +415,6 @@ categorical_variables:
 - WBOARDS
 - TVVIDEO
 - RGSTR
-- LGOFFDEVN
-- SMOFFDEVN
 - LZHRPC
 - LOHRPC
 - LTNR24
@@ -441,7 +437,6 @@ categorical_variables:
 - LTEXPC
 - PKLT
 - PKLTINOUT
-- PKLTN
 - WINTYP
 - TINT
 - REFL
@@ -1020,6 +1015,7 @@ numeric_variables:
 - FDPREPSF
 - CONFSPP
 - XRAYN
+- OUTHOSPPCT
 - RFGRSN
 - RFGCOMPN
 - RFGWIN
@@ -1032,6 +1028,8 @@ numeric_variables:
 - LAPTPN
 - TABLETN
 - SERVERN
+- LGOFFDEVN
+- SMOFFDEVN
 - WBOARDSN
 - TVVIDEON
 - RGSTRN
@@ -1249,3 +1247,4 @@ numeric_variables:
 - FINALWT149
 - FINALWT150
 - FINALWT151
+- PKLTN
