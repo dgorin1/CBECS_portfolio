@@ -8,8 +8,6 @@ datasets:
 build:
   target: "LOG(MFBTU)"           # or your chosen target
   test_size: 0.2
-  random_state: 42
+  random_state: 1
   variance_threshold: 0.10
   drop_first_ohe: true
-  log_skew_threshold: 1.0
-  log_min_orders_of_mag: 2

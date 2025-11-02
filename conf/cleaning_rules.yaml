@@ -1,0 +1,126 @@
+# Top-coding caps (replace values >= key with cap_to)
+top_codes:
+  NELVTR:     { threshold: 995, cap_to: 30 }
+  LTNR24:     { threshold: 995, cap_to: 30 }
+  RWSEAT:     { threshold: 99995, cap_to: 2000 }
+  PBSEAT:     { threshold: 99995, cap_to: 15000 }
+  NELVTR:     { threshold: 995,   cap_to: 30 }
+  NESLTR:     { threshold: 995,   cap_to: 10 }
+  BASEMNT:    { threshold: 995,   cap_to: 5 }
+  FLCEILHT:   { threshold: 995,   cap_to: 50 }
+  HCBED:      { threshold: 9995,  cap_to: 250 }
+  LODGRM:     { threshold: 99995, cap_to: 250 }
+  NRSBED:     { threshold: 9995,  cap_to: 250 }
+  SERVERN:    { threshold: 9995,  cap_to: 500 }
+  XRAYN:      { threshold: 995,   cap_to: 20 }
+  RFGRSN:     { threshold: 99995, cap_to: 1000 }
+  RFGCOMPN:   { threshold: 99995, cap_to: 1000 }
+  LGOFFDEVN:  { threshold: 9995,  cap_to: 500 }
+  SMOFFDEVN:  { threshold: 9995,  cap_to: 500 }
+  WBOARDSN:   { threshold: 9995,  cap_to: 500 }
+  TVVIDEON:   { threshold: 995,   cap_to: 200 }
+
+
+
+recode_rules:
+  # -------- BULK RULES --------
+  # NA -> 0 for many columns (your long list)
+  - when: "NA"
+    set_to: 0
+    columns:
+      - BASEMNT
+      - NELVTR
+      - NESLTR
+      - DRYCL
+      - RWSEAT
+      - PBSEAT
+      - EDSEAT
+      - FDSEAT
+      - HCBED
+      - RCACP_EL
+      - PKGCP_EL
+      - CHILP_EL
+      - HTPCP_EL
+      - ACWNWP_EL
+      - EVAPP_EL
+      - OTCLP_EL
+      - CHILP_NG
+      - OTCLP_NG
+      - CHILP_FK
+      - OTCLP_FK
+      - CHILP_PR
+      - OTCLP_PR
+      - CHILP_ST
+      - OTCLP_ST
+      - CHWTP_CW
+      - OTCLP_OT
+      - SNACKSF
+      - FASTFDSF
+      - CAFSF
+      - FDPREPSF
+      - XRAYN
+      - RFGRSN
+      - RFGCOMPN
+      - RFGWIN
+      - RFGOPN
+      - RFGCLN
+      - RFGVNN
+      - RFGICN
+      - RFGSTP
+      - PCTERMN
+      - LAPTPN
+      - MLTMON
+      - TABLETN
+      - SERVERN
+      - LGOFFDEVN
+      - SMOFFDEVN
+      - WBOARDSN
+      - TVVIDEON
+      - RGSTRN
+      - ATMN
+      - LTZHRP
+      - LTOHRP
+      - LTNHRP
+      - BULBP
+      - HALOP
+      - HIDP
+      - LEDP
+      - OTLTP
+      - PKLTN
+      - DAYLTP
+      - NRSBED
+      - LODGRM
+      - DRVTHRU
+
+  # NA -> 2 
+  - when: "NA"
+    set_to: 2
+    columns:
+      - VACANT
+
+# Renovation block (shared missingness)
+renovation_fields:
+  - RENCOS
+  - RENADD
+  - RENRDC
+  - RENINT
+  - RENRFF
+  - RENWIN
+  - RENHVC
+  - RENLGT
+  - RENPLB
+  - RENELC
+  - RENINS
+  - RENSAF
+  - RENSTR
+  - RENOTH
+
+# Columns to drop to avoid leakage or admin flags
+drop_columns:
+  - PUBID
+  - FINALWT
+  - FINALWT1
+  # …etc
+
+# Force NA→category replacement for these categoricals (use "missing")
+categorical_missing_as_label: true
