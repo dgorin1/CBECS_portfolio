@@ -38,7 +38,11 @@ class MassRecoder(BaseEstimator, TransformerMixin):
         X = X.copy()
         for rule in self.rules:
             if rule['when'] == "NA":
-               X.loc[:, rule["columns"]] = X.loc[:, rule["columns"]].fillna(rule["set_to"])
+                X.loc[:, rule["columns"]] = X.loc[:, rule["columns"]].fillna(rule["set_to"])
+               
+            else:
+                mask = X[rule["columns"]] == int(rule['when'])
+                X[rule["columns"]] = X[rule["columns"]].mask(X[rule["columns"]] == int(rule["when"]), int(rule["set_to"]))
         return X
 
 

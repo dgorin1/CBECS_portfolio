@@ -97,6 +97,12 @@ recode_rules:
     set_to: 2
     columns:
       - VACANT
+  
+  # 5 -> 2 
+  - when: 5
+    set_to: 2
+    columns:
+      - DRVTHRU
 
 # Renovation block (shared missingness)
 renovation_fields:

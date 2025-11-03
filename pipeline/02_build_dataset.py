@@ -23,11 +23,11 @@ RAW_DIR = PROJ/CFG["data"]["raw_dir"]
 PROC_DIR = PROJ/CFG["data"]["processed_dir"]
 PROC_DIR.mkdir(parents=True, exist_ok=True)
 
-raw_csv = RAW_DIR/CFG["datasets"]["raw_csv"]
+year = CFG["datasets"]["year"]
 target_col = CFG["build"]["target"]
 
-print(f"Loading raw: {raw_csv}")
-df = pd.read_csv(raw_csv)
+print(f"Loading raw: {year}")
+df = pd.read_csv(PROJ / "data" / "raw" /  f"cbecs_{year}_microdata.csv")
 
 # ---------- Column groups ----------
 cat_cols = [c for c in TYPES["categorical_variables"] if c in df.columns]
