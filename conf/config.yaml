@@ -3,7 +3,8 @@ data:
   interim_dir: "data/interim"
   processed_dir: "data/processed"
 datasets:
-  raw_csv: "cbecs_2018_microdata.csv"
+  year: 2018
+  raw_csv_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
   codebook_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/2018microdata_codebook.xlsx"
 build:
   target: "LOG(MFBTU)"           # or your chosen target

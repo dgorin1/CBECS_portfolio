@@ -1,6 +1,6 @@
 # pipeline/02_build_dataset.py
 from __future__ import annotations
-import pathlib, yaml, joblib
+import pathlib, yaml
 import pandas as pd
 import numpy as np
 

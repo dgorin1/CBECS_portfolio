@@ -20,7 +20,7 @@ year = int(CFG["datasets"]["year"])
 OUT_PATH = RAW_DIR / f"cbecs_{year}_microdata.csv"
 
 # Get CSV URL from yaml
-CSV_URL = CFG["datasets"]["data_url"]
+CSV_URL = CFG["datasets"]["raw_csv_url"]
 print(f"Downloading {CSV_URL} -> {OUT_PATH}...")
 
 # download data..
