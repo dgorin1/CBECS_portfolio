@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 
 from transformers import (
-    TopCodeClipper, MassRecoder)
+    TopCodeClipper, MassRecoder, MassDrop, MedianImputer)
 
 # ---------- Paths & config ----------
 PROJ = pathlib.Path(__file__).resolve().parents[1]
@@ -34,21 +34,20 @@ cat_cols = [c for c in TYPES["categorical_variables"] if c in df.columns]
 num_cols = [c for c in TYPES["numeric_variables"] if c in df.columns]
 
 
+
 # ---------- Pre-clean block  ----------
 preclean = Pipeline(steps=[
+    ("mass_drop", MassDrop(RULES.get("drop_columns"), RULES.get("regex_for_delete"))),
+    ("mass_recodes", MassRecoder(RULES.get("recode_rules"))),
     ("top_codes", TopCodeClipper(RULES.get("top_codes"))),
-    ("mass_recodes", MassRecoder(RULES.get("recode_rules")))
-])
+    ("median_imputer", MedianImputer(RULES.get("impute_rules"))),
+    
+    
+    ])
 
 df_clean = preclean.fit_transform(df)
-breakpoint()
-# After log transform, update groups: some numerics were replaced by LOG(...)
-# Collect numeric-like columns again
-current_cols = df_clean.columns.tolist()
-num_like = [c for c in current_cols
-            if (c in num_cols) or c.startswith("LOG(") or c.endswith("_is_na")]
 
-cats_present = [c for c in cat_cols if c in df_clean.columns]
+
 
 
 

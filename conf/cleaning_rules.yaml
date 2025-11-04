@@ -1,4 +1,7 @@
 # Top-coding caps (replace values >= key with cap_to)
+target_variable:
+  -MFBTU
+
 top_codes:
   NELVTR:     { threshold: 995, cap_to: 30 }
   LTNR24:     { threshold: 995, cap_to: 30 }
@@ -30,43 +33,21 @@ recode_rules:
     columns:
       - BASEMNT
       - NELVTR
-      - NESLTR
       - DRYCL
       - RWSEAT
       - PBSEAT
       - EDSEAT
       - FDSEAT
-      - HCBED
-      - RCACP_EL
-      - PKGCP_EL
-      - CHILP_EL
-      - HTPCP_EL
-      - ACWNWP_EL
-      - EVAPP_EL
-      - OTCLP_EL
-      - CHILP_NG
       - OTCLP_NG
-      - CHILP_FK
       - OTCLP_FK
       - CHILP_PR
       - OTCLP_PR
-      - CHILP_ST
       - OTCLP_ST
-      - CHWTP_CW
-      - OTCLP_OT
       - SNACKSF
-      - FASTFDSF
-      - CAFSF
-      - FDPREPSF
-      - XRAYN
-      - RFGRSN
-      - RFGCOMPN
-      - RFGWIN
       - RFGOPN
       - RFGCLN
       - RFGVNN
       - RFGICN
-      - RFGSTP
       - PCTERMN
       - LAPTPN
       - MLTMON
@@ -88,9 +69,28 @@ recode_rules:
       - OTLTP
       - PKLTN
       - DAYLTP
-      - NRSBED
-      - LODGRM
       - DRVTHRU
+
+
+  # NA -> 1 
+  - when: "NA"
+    set_to: 1
+    columns:
+    - RENCOS
+    - RENADD
+    - RENRDC
+    - RENINT
+    - RENRFF
+    - RENWIN
+    - RENHVC
+    - RENLGT
+    - RENPLB
+    - RENELC
+    - RENINS
+    - RENSAF
+    - RENSTR
+    - RENOTH
+    - RENOV
 
   # NA -> 2 
   - when: "NA"
@@ -104,8 +104,99 @@ recode_rules:
     columns:
       - DRVTHRU
 
-# Renovation block (shared missingness)
-renovation_fields:
+
+# Columns to drop to avoid leakage or admin flags
+drop_columns:
+- MFEXP
+- ELBTU
+- ELCNS
+- ELEXP
+- NGBTU
+- NGCNS
+- NGEXP
+- MFHTBTU
+- MFCLBTU
+- MFVNBTU
+- MFWTBTU
+- MFLTBTU
+- MFCKBTU
+- MFRFBTU
+- MFOFBTU
+- MFPCBTU
+- MFOTBTU
+- ELHTBTU
+- ELCLBTU
+- ELVNBTU
+- ELWTBTU
+- ELLTBTU
+- ELCKBTU
+- ELRFBTU
+- ELOFBTU
+- ELPCBTU
+- ELOTBTU
+- NGHTBTU
+- NGCLBTU
+- NGWTBTU
+- NGCKBTU
+- NGOTBTU
+- FKBTU
+- FKCNS
+- FKEXP
+- DHBTU
+- DHHTBTU
+- DHCLBTU
+- DHWTBTU
+- DHCKBTU
+- DHOTBTU
+- DHEXP
+- FKOTBTU
+- FKHTBTU
+- FKCLBTU
+- FKCKBTU
+- WOEXP
+- FKWTBTU
+- SQFTC
+- ELEVTR
+- ESCLTR
+- PUBID
+- NOCCAT
+- WKHRSC
+- NWKERC
+- LZHRPC
+- LOHRPC
+- LNHRPC
+
+
+impute_rules:
+  # XXXX --> median
+  NOCC:  { value: 995, fill_as: median }
+  LODGRM: {value: NA, fill_as: median}
+  OCCUPYP: {value: NA, fill_as: median }
+  NESLTR: {value: NA, fill_as: median}
+  HCBED: {value: NA, fill_as: median}
+  NRSBED: {value: NA, fill_as: median}
+  RCACP_EL: {value: NA, fill_as: median}
+  PKGCP_EL: {value: NA, fill_as: median}
+  CHILP_EL: {value: NA, fill_as: median}
+  HTPCP_EL: {value: NA, fill_as: median}
+  ACWNWP_EL: {value: NA, fill_as: median}
+  EVAPP_EL: {value: NA, fill_as: median}
+  OTCLP_EL: {value: NA, fill_as: median}
+  CHILP_NG: {value: NA, fill_as: median}
+  CHILP_FK: {value: NA, fill_as: median}
+  CHILP_ST: {value: NA, fill_as: median}
+  CHWTP_CW: {value: NA, fill_as: median}
+  SNACK_SF: {value: NA, fill_as: median}
+  FASTFDSF: {value: NA, fill_as: median}
+  CAFSF: {value: NA, fill_as: median}
+  FDPREPSF: {value: NA, fill_as: median}
+  XRAYN: {value: NA, fill_as: median}
+  RFGRSN: {value: NA, fill_as: median}
+  RFGCOMPN: {value: NA, fill_as: median}
+  RFGWIN: {value: NA, fill_as: median}
+  RFGSTP: {value: NA, fill_as: median}
+
+renov_subs:
   - RENCOS
   - RENADD
   - RENRDC
@@ -113,20 +204,13 @@ renovation_fields:
   - RENRFF
   - RENWIN
   - RENHVC
-  - RENLGT
+  - RELGT
   - RENPLB
   - RENELC
   - RENINS
   - RENSAF
   - RENSTR
   - RENOTH
+  - RENOV
 
-# Columns to drop to avoid leakage or admin flags
-drop_columns:
-  - PUBID
-  - FINALWT
-  - FINALWT1
-  # …etc
-
-# Force NA→category replacement for these categoricals (use "missing")
-categorical_missing_as_label: true
+regex_for_delete: "^FINALWT\\d*$"

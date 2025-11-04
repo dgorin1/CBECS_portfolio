@@ -44,5 +44,49 @@ class MassRecoder(BaseEstimator, TransformerMixin):
                 mask = X[rule["columns"]] == int(rule['when'])
                 X[rule["columns"]] = X[rule["columns"]].mask(X[rule["columns"]] == int(rule["when"]), int(rule["set_to"]))
         return X
+    
+class MassDrop(BaseEstimator, TransformerMixin):
+    """Drops columns from list provided in yaml. This is for columns that are obviously useless"""
+    def __init__(self, cols_to_drop, regex_for_delete):
+        self.cols_to_drop = cols_to_drop
+        self.regex_for_delete = regex_for_delete
 
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        X = X.copy()
+        flags_to_drop = X.filter(regex=self.regex_for_delete, axis=1).columns.tolist()
+        X = X.drop(self.cols_to_drop + flags_to_drop, axis=1)
+        return X
+
+class MedianImputer(BaseEstimator, TransformerMixin):
+    """Impute Median and add flag column"""
+
+    def __init__(self, impute_rules):
+        self.impute_rules = impute_rules
+        self.columns_to_inpute = impute_rules.keys()
+
+    def fit(self, X, y=None):
+        self.impute_cols = [c for c in self.columns_to_inpute if c in X.columns]
+        self.medians = X[self.impute_cols].median().to_dict()
+        return self
+    
+    def transform(self, X, y=None):
+        X = X.copy()
+        for col in self.impute_cols:
+            # If we're imputing NaNs
+            if self.impute_rules[col]['value'] == 'NA':
+                X[col] = X[col].fillna(self.medians[col])
+            else:
+                # If we're imputing another flag...
+                mask = X[col] == self.impute_rules[col]['value']
+                X[col] = X[col].mask(mask, self.medians[col])
+
+            # Create flag column
+            X[f"{col}_median_imputed"] = mask.astype(int)
+
+        return X
+        
+    
 
