@@ -6,6 +6,8 @@ from sklearn.base import BaseEstimator, TransformerMixin, clone
 from typing import Dict, List, Any
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, KFold
+import time
+import sys
 
 
 
@@ -63,20 +65,23 @@ class MassDrop(BaseEstimator, TransformerMixin):
         # Cols with specific pattern indicating flags
         flags_to_drop = X.filter(regex=self.regex_for_delete, axis=1).columns.tolist()
         
-        # Cols with pattern indicating they're survey weights
+        # Cols that are survey weights / coded flags (only 0/1/2/9, ignoring NaN)
         weight_cols_to_drop = [c for c in X.columns if self._is_0_1_9_only(X[c])]
 
         # Drop cols
         X = X.drop(self.cols_to_drop + flags_to_drop + weight_cols_to_drop, axis=1)
         return X
     
-    def _is_0_1_9_only(self,X) -> bool:
+    def _is_0_1_9_only(self, s) -> bool:
         """
         Returns True if (ignoring NaN) the unique numeric values in the column
-        are a subset of {0,1,9}.
+        are a subset of {0,1,2,9}. (Covers the 0/1/9 case as well.)
         """
-        vals = X.dropna().unique()
-        return len(vals) > 0 and set(np.unique(vals)).issubset({0, 1, 9})
+        # coerce to numeric in case values are strings; drop NaNs
+        vals = pd.to_numeric(s, errors='coerce').dropna().unique()
+        if len(vals) == 0:
+            return False
+        return set(np.unique(vals)).issubset({0, 1, 2, 9})
     
 class MedianImputer(BaseEstimator, TransformerMixin):
     """Impute Median and add flag column"""
@@ -158,15 +163,14 @@ class AutoTransform(BaseEstimator, TransformerMixin):
     - Non-numeric (i.e., not in num_cols) are passed through unchanged.
     - Output keeps original order; numeric columns are renamed to '{col}_{transform}'.
     """
-
     def __init__(self,
                  estimator=None,
                  scoring: str = 'neg_mean_squared_error',
                  cv: int = 5,
                  n_jobs = None,
                  random_state: int = 42,
-                 candidates  = None,
-                 num_cols  = None,   # <- pass your numeric columns here
+                 candidates = None,
+                 num_cols = None,
                  return_df: bool = True,
                  suffix_identity: bool = True):
         self.estimator = estimator if estimator is not None else LinearRegression()
@@ -200,71 +204,130 @@ class AutoTransform(BaseEstimator, TransformerMixin):
         if name == 'sqrt':     return np.sqrt(col)
         return col
 
+    def _print(self, msg: str):
+        print(msg)
+
     # ---- sklearn API ----
     def fit(self, X, y):
+
+        t0 = time.time()
+
         # Coerce to DataFrame for labeled ops
         X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
         self._cols_ = list(X_df.columns)
 
         # Use provided num_cols; validate and preserve order as in X
         if self.num_cols is None:
-            # fallback: treat all columns as numeric if none provided
             self._num_cols_ = self._cols_
         else:
-            missing = [c for c in self.num_cols if c not in self._cols_]
-            if missing:
-                raise ValueError(f"num_cols contains columns not in X: {missing}")
-            # keep only columns that exist and preserve dataset order
             self._num_cols_ = [c for c in self._cols_ if c in set(self.num_cols)]
-
         self._non_num_cols_ = [c for c in self._cols_ if c not in self._num_cols_]
 
         # numeric matrix for evaluation
-        X_num = X_df[self._num_cols_].to_numpy(dtype=float)
+        X_num = X_df[self._num_cols_].to_numpy(dtype=float, copy=False)
         y = np.asarray(y)
 
-        cv = self.cv if not isinstance(self.cv, int) else KFold(
+        # Prebuild CV splitter once
+        kf = self.cv if not isinstance(self.cv, int) else KFold(
             n_splits=self.cv, shuffle=True, random_state=self.random_state
         )
+        splits = list(kf.split(X_num, y))  # <-- reuse
 
         self.best_per_feature_.clear()
         self.cv_scores_.clear()
 
-        # Per-column transform selection
+        total = len(self._num_cols_)
+        self._print(f"[AutoTransform] evaluating transforms for {total} numeric columns "
+                    f"({', '.join(self.candidates)}) scoring='{self.scoring}', cv={getattr(kf, 'n_splits', kf)}")
+
+        # ---------- precompute candidate columns for ALL features (vectorized) ----------
+        # identity
+        X_id = X_num
+        # log1p: only valid for min >= -1; else put NaNs so we skip later
+        min_vals = np.nanmin(X_num, axis=0)
+        valid_log = (min_vals >= -1)
+        X_log = np.empty_like(X_num)
+        X_log[:] = np.nan
+        if 'log1p' in self.candidates:
+            X_log[:, valid_log] = np.log1p(X_num[:, valid_log], dtype=float)
+        # sqrt: only valid for min >= 0
+        valid_sqrt = (min_vals >= 0)
+        X_sqrt = np.empty_like(X_num)
+        X_sqrt[:] = np.nan
+        if 'sqrt' in self.candidates:
+            X_sqrt[:, valid_sqrt] = np.sqrt(X_num[:, valid_sqrt], dtype=float)
+
+        # mapping candidate -> precomputed matrix
+        cand_mat = {'identity': X_id}
+        if 'log1p' in self.candidates: cand_mat['log1p'] = X_log
+        if 'sqrt'  in self.candidates: cand_mat['sqrt']  = X_sqrt
+
+        # ---------- feature loop  ----------
         for j, col_name in enumerate(self._num_cols_):
-            col = X_num[:, j]
-            scores_for_col: Dict[str, float] = {}
+            self._print(f"  [{j+1}/{total}] Column '{col_name}'")
+            scores_for_col = {}
             best_score = -np.inf
             best_name = 'identity'
 
-            for name in self.candidates:
-                if not self._valid(name, col):
-                    continue
-                X_tmp = X_num.copy()
-                X_tmp[:, j] = self._apply_once(name, col)
+            # collect candidates valid for this column (check for NaNs marker)
+            valid_names = []
+            for name, M in cand_mat.items():
+                if name == 'identity' or not np.isnan(M[0, j]):
+                    valid_names.append(name)
+                else:
+                    self._print(f"      - skip {name:<7} | invalid domain")
 
-                est = clone(self.estimator)
-                scores = cross_val_score(est, X_tmp, y, scoring=self.scoring,
-                                         cv=cv, n_jobs=self.n_jobs)
-                mean_score = float(np.mean(scores))
+            # Score each candidate by CV, reusing folds
+            for name in valid_names:
+                # reuse the base matrix but swap in the candidate column by view
+                # (we’ll avoid full copies inside the fold loop)
+                mean_scores = []
+
+                for tr_idx, te_idx in splits:
+                    Xtr = X_id[tr_idx].copy()  # one copy per fold
+                    Xtr[:, j] = cand_mat[name][tr_idx, j]
+                    Xte = X_id[te_idx].copy()
+                    Xte[:, j] = cand_mat[name][te_idx, j]
+
+                    est = clone(self.estimator)
+                    est.fit(Xtr, y[tr_idx])
+                    # score on the test split using the chosen scorer
+                    if self.scoring == 'r2':
+                        yhat = est.predict(Xte)
+                        # inline r2 to avoid scorer overhead
+                        ss_res = np.sum((y[te_idx] - yhat) ** 2)
+                        ss_tot = np.sum((y[te_idx] - y[te_idx].mean()) ** 2)
+                        score = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+                    else:
+                        # fallback to sklearn scorer if you use other metrics
+                        from sklearn.metrics import get_scorer
+                        scorer = get_scorer(self.scoring)
+                        score = scorer(est, Xte, y[te_idx])
+
+                    mean_scores.append(score)
+
+                mean_score = float(np.mean(mean_scores))
                 scores_for_col[name] = mean_score
+                self._print(f"      - try  {name:<7} | CV mean = {mean_score:.6f}")
                 if mean_score > best_score:
                     best_score, best_name = mean_score, name
 
             self.best_per_feature_[col_name] = best_name
             self.cv_scores_[col_name] = scores_for_col
+            self._print(f"      -> chose {best_name} (score {best_score:.6f})")
 
         # Build output column names in original order
         self._out_cols_.clear()
         for c in self._cols_:
             if c in self._num_cols_:
                 suffix = self.best_per_feature_[c]
-                if suffix == 'identity' and not self.suffix_identity:
-                    self._out_cols_.append(c)
-                else:
-                    self._out_cols_.append(f"{c}_{suffix}")
+                self._out_cols_.append(c if (suffix == 'identity' and not self.suffix_identity)
+                                    else f"{c}_{suffix}")
             else:
                 self._out_cols_.append(c)
+
+        dt = time.time() - t0
+        self._print(f"[AutoTransform] finished: {total} columns processed in {dt:.2f}s")
         return self
 
     def transform(self, X):
