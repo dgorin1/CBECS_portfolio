@@ -177,24 +177,6 @@ impute_rules:
   # XXXX --> median
   NOCC:  { value: 995, fill_as: median }
 
-
-renov_subs:
-  - RENCOS
-  - RENADD
-  - RENRDC
-  - RENINT
-  - RENRFF
-  - RENWIN
-  - RENHVC
-  - RELGT
-  - RENPLB
-  - RENELC
-  - RENINS
-  - RENSAF
-  - RENSTR
-  - RENOTH
-  - RENOV
-
 regex_for_delete: "^FINALWT\\d*$"
 
 missing_thresh: 0.99

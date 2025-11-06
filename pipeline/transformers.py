@@ -237,8 +237,8 @@ class AutoTransform(BaseEstimator, TransformerMixin):
         self.cv_scores_.clear()
 
         total = len(self._num_cols_)
-        self._print(f"[AutoTransform] evaluating transforms for {total} numeric columns "
-                    f"({', '.join(self.candidates)}) scoring='{self.scoring}', cv={getattr(kf, 'n_splits', kf)}")
+        # self._print(f"[AutoTransform] evaluating transforms for {total} numeric columns "
+        #             f"({', '.join(self.candidates)}) scoring='{self.scoring}', cv={getattr(kf, 'n_splits', kf)}")
 
         # ---------- precompute candidate columns for ALL features (vectorized) ----------
         # identity
@@ -264,7 +264,7 @@ class AutoTransform(BaseEstimator, TransformerMixin):
 
         # ---------- feature loop  ----------
         for j, col_name in enumerate(self._num_cols_):
-            self._print(f"  [{j+1}/{total}] Column '{col_name}'")
+            # self._print(f"  [{j+1}/{total}] Column '{col_name}'")
             scores_for_col = {}
             best_score = -np.inf
             best_name = 'identity'
@@ -274,8 +274,8 @@ class AutoTransform(BaseEstimator, TransformerMixin):
             for name, M in cand_mat.items():
                 if name == 'identity' or not np.isnan(M[0, j]):
                     valid_names.append(name)
-                else:
-                    self._print(f"      - skip {name:<7} | invalid domain")
+                # else:
+                #     self._print(f"      - skip {name:<7} | invalid domain")
 
             # Score each candidate by CV, reusing folds
             for name in valid_names:
@@ -308,13 +308,13 @@ class AutoTransform(BaseEstimator, TransformerMixin):
 
                 mean_score = float(np.mean(mean_scores))
                 scores_for_col[name] = mean_score
-                self._print(f"      - try  {name:<7} | CV mean = {mean_score:.6f}")
+                # self._print(f"      - try  {name:<7} | CV mean = {mean_score:.6f}")
                 if mean_score > best_score:
                     best_score, best_name = mean_score, name
 
             self.best_per_feature_[col_name] = best_name
             self.cv_scores_[col_name] = scores_for_col
-            self._print(f"      -> chose {best_name} (score {best_score:.6f})")
+            # self._print(f"      -> chose {best_name} (score {best_score:.6f})")
 
         # Build output column names in original order
         self._out_cols_.clear()
@@ -327,7 +327,7 @@ class AutoTransform(BaseEstimator, TransformerMixin):
                 self._out_cols_.append(c)
 
         dt = time.time() - t0
-        self._print(f"[AutoTransform] finished: {total} columns processed in {dt:.2f}s")
+        # self._print(f"[AutoTransform] finished: {total} columns processed in {dt:.2f}s")
         return self
 
     def transform(self, X):
