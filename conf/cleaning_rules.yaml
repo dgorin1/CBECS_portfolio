@@ -104,6 +104,11 @@ recode_rules:
     columns:
       - DRVTHRU
 
+  # 994 -> 12 (A random middle-code??)
+  - when: 994
+    set_to: 12
+    columns:
+      - NFLOOR
 
 # Columns to drop to avoid leakage or admin flags
 drop_columns:
@@ -165,36 +170,13 @@ drop_columns:
 - LZHRPC
 - LOHRPC
 - LNHRPC
+- OUTHOSPPCT
 
 
 impute_rules:
   # XXXX --> median
   NOCC:  { value: 995, fill_as: median }
-  LODGRM: {value: NA, fill_as: median}
-  OCCUPYP: {value: NA, fill_as: median }
-  NESLTR: {value: NA, fill_as: median}
-  HCBED: {value: NA, fill_as: median}
-  NRSBED: {value: NA, fill_as: median}
-  RCACP_EL: {value: NA, fill_as: median}
-  PKGCP_EL: {value: NA, fill_as: median}
-  CHILP_EL: {value: NA, fill_as: median}
-  HTPCP_EL: {value: NA, fill_as: median}
-  ACWNWP_EL: {value: NA, fill_as: median}
-  EVAPP_EL: {value: NA, fill_as: median}
-  OTCLP_EL: {value: NA, fill_as: median}
-  CHILP_NG: {value: NA, fill_as: median}
-  CHILP_FK: {value: NA, fill_as: median}
-  CHILP_ST: {value: NA, fill_as: median}
-  CHWTP_CW: {value: NA, fill_as: median}
-  SNACK_SF: {value: NA, fill_as: median}
-  FASTFDSF: {value: NA, fill_as: median}
-  CAFSF: {value: NA, fill_as: median}
-  FDPREPSF: {value: NA, fill_as: median}
-  XRAYN: {value: NA, fill_as: median}
-  RFGRSN: {value: NA, fill_as: median}
-  RFGCOMPN: {value: NA, fill_as: median}
-  RFGWIN: {value: NA, fill_as: median}
-  RFGSTP: {value: NA, fill_as: median}
+
 
 renov_subs:
   - RENCOS
@@ -214,3 +196,7 @@ renov_subs:
   - RENOV
 
 regex_for_delete: "^FINALWT\\d*$"
+
+missing_thresh: 0.99
+
+target_variable: MFBTU
