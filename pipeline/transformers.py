@@ -67,21 +67,24 @@ class MassDrop(BaseEstimator, TransformerMixin):
         
         # Cols that are survey weights / coded flags (only 0/1/2/9, ignoring NaN)
         weight_cols_to_drop = [c for c in X.columns if self._is_0_1_9_only(X[c])]
-
         # Drop cols
         X = X.drop(self.cols_to_drop + flags_to_drop + weight_cols_to_drop, axis=1)
+
+
         return X
     
     def _is_0_1_9_only(self, s) -> bool:
         """
         Returns True if (ignoring NaN) the unique numeric values in the column
-        are a subset of {0,1,2,9}. (Covers the 0/1/9 case as well.)
+        are exactly {0,1,2,9} or {0,1,9}.
         """
-        # coerce to numeric in case values are strings; drop NaNs
         vals = pd.to_numeric(s, errors='coerce').dropna().unique()
         if len(vals) == 0:
             return False
-        return set(np.unique(vals)).issubset({0, 1, 2, 9})
+
+        vals_set = set(np.unique(vals))
+        allowed_sets = [{0, 1, 9}, {0, 1, 2, 9}]
+        return vals_set in allowed_sets
     
 class MedianImputer(BaseEstimator, TransformerMixin):
     """Impute Median and add flag column"""

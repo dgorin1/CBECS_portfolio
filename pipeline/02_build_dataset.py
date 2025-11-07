@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-
+import json
 from transformers import (
     TopCodeClipper, MassRecoder, MassDrop, OneHotEncoder, DropMissing
 )
@@ -44,15 +44,21 @@ preclean = Pipeline(steps=[
 
 df_clean = preclean.fit_transform(df)
 
-# ---------- Persist canonical dataset & metadata ----------
-base_path = PROC_DIR /"schema_after_encode.txt"
-df_clean.to_parquet(base_path, index=False)
-print(f"Saved cleaned dataset: {base_path}")
 
-# Save the column schema after encoding (helps 03_train reproducibility)
-schema_path = PROC_DIR / "schema_after_encode.txt"
-with open(schema_path, "w") as f:
-    f.write("\n".join(df_clean.columns))
+
+# ---------- Persist canonical dataset (parquet) ----------
+clean_path = PROC_DIR / f"cbecs_{year}_clean.parquet"
+df_clean.to_parquet(clean_path, index=False)
+print(f"Saved cleaned dataset (parquet): {clean_path}")
+
+# ---------- Persist column schema (JSON) ----------
+schema_path = PROC_DIR / f"cbecs_{year}_schema.json"
+schema = {
+    "columns": list(df_clean.columns),
+    "dtypes": {col: str(dtype) for col, dtype in df_clean.dtypes.items()}
+}
+with open(schema_path, "w", encoding="utf-8") as f:
+    json.dump(schema, f, indent=2)
 print(f"Saved schema: {schema_path}")
 
 
