@@ -51,7 +51,7 @@ class MassRecoder(BaseEstimator, TransformerMixin):
         return X
     
 class MassDrop(BaseEstimator, TransformerMixin):
-    """Drops columns from list provided in yaml. This is for columns that are obviously useless"""
+    """Drops columns from list provided in yaml, regex matches, and any columns starting with 'Z'."""
     def __init__(self, cols_to_drop, regex_for_delete):
         self.cols_to_drop = cols_to_drop
         self.regex_for_delete = regex_for_delete
@@ -61,30 +61,18 @@ class MassDrop(BaseEstimator, TransformerMixin):
     
     def transform(self, X, y=None):
         X = X.copy()
-        self.cols_to_drop = [c for c in self.cols_to_drop if c in X.columns]
-        # Cols with specific pattern indicating flags
+        # Keep only cols that exist
+        explicit_drops = [c for c in self.cols_to_drop if c in X.columns]
+
+        # Regex-based drops
         flags_to_drop = X.filter(regex=self.regex_for_delete, axis=1).columns.tolist()
-        
-        # Cols that are survey weights / coded flags (only 0/1/2/9, ignoring NaN)
-        weight_cols_to_drop = [c for c in X.columns if self._is_0_1_9_only(X[c])]
-        # Drop cols
-        X = X.drop(self.cols_to_drop + flags_to_drop + weight_cols_to_drop, axis=1)
 
+        # Any column whose name starts with 'Z'
+        z_prefix_cols = [c for c in X.columns if str(c).startswith('Z')]
 
+        # Drop them all
+        X = X.drop(explicit_drops + flags_to_drop + z_prefix_cols, axis=1, errors='ignore')
         return X
-    
-    def _is_0_1_9_only(self, s) -> bool:
-        """
-        Returns True if (ignoring NaN) the unique numeric values in the column
-        are exactly {0,1,2,9} or {0,1,9}.
-        """
-        vals = pd.to_numeric(s, errors='coerce').dropna().unique()
-        if len(vals) == 0:
-            return False
-
-        vals_set = set(np.unique(vals))
-        allowed_sets = [{0, 1, 9}, {0, 1, 2, 9}]
-        return vals_set in allowed_sets
     
 class MedianImputer(BaseEstimator, TransformerMixin):
     """Impute Median and add flag column"""
