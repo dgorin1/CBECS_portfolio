@@ -180,5 +180,3 @@ impute_rules:
 regex_for_delete: "^FINALWT\\d*$"
 
 missing_thresh: 0.99
-
-target_variable: MFBTU

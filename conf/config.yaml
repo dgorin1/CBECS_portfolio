@@ -7,7 +7,7 @@ datasets:
   raw_csv_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/cbecs2018_final_public.csv"
   codebook_url: "https://www.eia.gov/consumption/commercial/data/2018/xls/2018microdata_codebook.xlsx"
 build:
-  target: "LOG(MFBTU)"           # or your chosen target
+  target: "MFBTU"           # or your chosen target
   test_size: 0.2
   random_state: 1
   variance_threshold: 0.10
