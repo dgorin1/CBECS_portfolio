@@ -45,7 +45,6 @@ preclean = Pipeline(steps=[
 df_clean = preclean.fit_transform(df)
 
 
-
 # ---------- Persist canonical dataset (parquet) ----------
 clean_path = PROC_DIR / f"cbecs_{year}_clean.parquet"
 df_clean.to_parquet(clean_path, index=False)

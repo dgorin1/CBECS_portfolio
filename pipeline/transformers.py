@@ -75,67 +75,98 @@ class MassDrop(BaseEstimator, TransformerMixin):
         return X
     
 class MedianImputer(BaseEstimator, TransformerMixin):
-    """Impute medians and add one flag col per imputed feature (batched to avoid fragmentation)."""
+    """Impute Median and add flag column"""
 
     def __init__(self, impute_rules):
         self.impute_rules = impute_rules
-        self.columns_to_impute = list(impute_rules.keys())
+        self.columns_to_inpute = impute_rules.keys()
 
     def fit(self, X, y=None):
-        X = X.copy()
-        # explicit list from rules, but only those present
-        self.impute_cols_manual_ = [c for c in self.columns_to_impute if c in X.columns]
-        # any other columns with NaNs at fit time
-        self.impute_cols_auto_ = X.columns[X.isna().any()].tolist()
-        self.medians_manual_ = X[self.impute_cols_manual_].median(numeric_only=True).to_dict()
-        self.medians_auto_   = X[self.impute_cols_auto_].median(numeric_only=True).to_dict()
+        self.impute_cols_manual = [c for c in self.columns_to_inpute if c in X.columns]
+        self.impute_cols_auto = X.columns[X.isna().any()].tolist()
+        self.medians_manual = X[self.impute_cols_manual].median().to_dict()
+        self.medians_auto = X[self.impute_cols_auto].median().to_dict()
         return self
-
+    
     def transform(self, X, y=None):
         X = X.copy()
-        to_concat = []
+        for col in self.impute_cols_manual:
+            mask = X[col] == self.impute_rules[col]['value']
+            X[col] = X[col].mask(mask, self.medians_manual[col])
 
-        # manual rules (replace sentinel -> median)
-        for col in self.impute_cols_manual_:
-            mask = (X[col] == self.impute_rules[col]['value'])
-            X.loc[mask, col] = self.medians_manual_[col]
-            to_concat.append(mask.astype(int).rename(f"{col}_median_imputed"))
-
-        # auto median for anything that still has NaNs
-        for col in self.impute_cols_auto_:
+            # Create flag column
+            X[f"{col}_median_imputed"] = mask.astype(int)
+            
+        for col in self.impute_cols_auto:
+            # Fill Median
             mask = X[col].isna()
-            if mask.any():
-                X.loc[mask, col] = self.medians_auto_[col]
-            to_concat.append(mask.astype(int).rename(f"{col}_median_imputed"))
+            X[col] = X[col].fillna(self.medians_auto[col])
 
-        if to_concat:
-            X = pd.concat([X] + to_concat, axis=1)
-
-        # one final copy() defragments the frame cheaply
-        return X.copy()
+            # Create flag
+            X[f"{col}_median_imputed"] = mask.astype(int)
+        return X
         
     
 class OneHotEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, cat_cols, num_cols):
-        self.cat_cols = cat_cols
-        self.num_cols = num_cols
+    def __init__(self, cat_cols, num_cols, drop_first=True, dtype=np.uint8):
+        self.cat_cols = list(cat_cols)
+        self.num_cols = list(num_cols)
+        self.drop_first = drop_first
+        self.dtype = dtype
+
+    def _prepare_cats(self, X):
+        # keep only columns that exist
+        cat_cols = [c for c in self.cat_cols if c in X.columns]
+        if cat_cols:
+            X = X.copy()
+            X[cat_cols] = X[cat_cols].astype("category")
+            # add 'missing' to categories then fill NA
+            for c in cat_cols:
+                X[c] = X[c].cat.add_categories(["missing"]).fillna("missing")
+        return X, cat_cols
 
     def fit(self, X, y=None):
+        X, self.cat_cols_ = self._prepare_cats(X)
+
+        # numeric cols that exist
+        self.num_cols_ = [c for c in self.num_cols if c in X.columns]
+
+        # build training dummies and remember their columns
+        if self.cat_cols_:
+            X_ohe = pd.get_dummies(
+                X[self.cat_cols_], drop_first=self.drop_first, dtype=self.dtype
+            )
+            self.ohe_cols_ = list(X_ohe.columns)
+        else:
+            self.ohe_cols_ = []
+
+        # final column order to enforce at transform
+        self.all_cols_ = self.num_cols_ + self.ohe_cols_
         return self
-    
+
     def transform(self, X, y=None):
-        X = X.copy()
-        self.cat_cols = [c for c in self.cat_cols if c in X.columns]
-        self.num_cols = [c for c in self.num_cols if c in X.columns]
+        X, cat_cols = self._prepare_cats(X)
 
-        # Fill NA with Missing so it can be its own category
-        X[self.cat_cols] = X[self.cat_cols].fillna("missing")
-        
-        # Perform One Hot Encoding (OHE) on categorical columns
-        X_ohe = pd.get_dummies(X[self.cat_cols], drop_first=True)  # drop_first=False if you want to keep all categories
-        X = pd.concat([X.drop(self.cat_cols, axis=1), X_ohe], axis=1)
-        return X
+        # numeric part
+        X_num = X[self.num_cols_] if self.num_cols_ else pd.DataFrame(index=X.index)
 
+        # dummies for the current data
+        if cat_cols:
+            X_ohe = pd.get_dummies(
+                X[cat_cols], drop_first=self.drop_first, dtype=self.dtype
+            )
+        else:
+            X_ohe = pd.DataFrame(index=X.index)
+
+        # align to training columns: add missing with 0, drop extras
+        X_ohe = X_ohe.reindex(columns=self.ohe_cols_, fill_value=0)
+
+        X_out = pd.concat([X_num, X_ohe], axis=1)
+
+        # ensure exact training column order (and add any truly missing with 0)
+        X_out = X_out.reindex(columns=self.all_cols_, fill_value=0)
+
+        return X_out
 
 class DropMissing(BaseEstimator, TransformerMixin):
     
@@ -329,17 +360,6 @@ class AutoTransform(BaseEstimator, TransformerMixin):
         # self._print(f"[AutoTransform] finished: {total} columns processed in {dt:.2f}s")
         return self
 
-    def _apply_once(self, name: str, col: np.ndarray) -> np.ndarray:
-        if name == 'identity':
-            return col
-        if name == 'log1p':
-            # clip to >= -1 to avoid NaNs; then log1p
-            return np.log1p(np.clip(col, -1, None))
-        if name == 'sqrt':
-            # clip to >= 0 to avoid NaNs
-            return np.sqrt(np.clip(col, 0, None))
-        return col
-
     def transform(self, X):
         X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=self._cols_)
         out_parts = []
@@ -348,12 +368,10 @@ class AutoTransform(BaseEstimator, TransformerMixin):
                 tname = self.best_per_feature_[c]
                 arr = self._apply_once(tname, X_df[c].to_numpy(dtype=float))
                 col_name = c if (tname == 'identity' and not self.suffix_identity) else f"{c}_{tname}"
-                # guard against any residual non-finite (rare but cheap)
-                arr = np.where(np.isfinite(arr), arr, 0.0)
                 out_parts.append(pd.Series(arr, index=X_df.index, name=col_name))
             else:
                 out_parts.append(X_df[c])
 
         X_out = pd.concat(out_parts, axis=1)
-        X_out = X_out[self._out_cols_]
+        X_out = X_out[self._out_cols_]  # enforce final order
         return X_out if self.return_df else X_out.to_numpy()
