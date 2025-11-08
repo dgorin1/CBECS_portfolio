@@ -75,36 +75,44 @@ class MassDrop(BaseEstimator, TransformerMixin):
         return X
     
 class MedianImputer(BaseEstimator, TransformerMixin):
-    """Impute Median and add flag column"""
+    """Impute medians and add one flag col per imputed feature (batched to avoid fragmentation)."""
 
     def __init__(self, impute_rules):
         self.impute_rules = impute_rules
-        self.columns_to_inpute = impute_rules.keys()
+        self.columns_to_impute = list(impute_rules.keys())
 
     def fit(self, X, y=None):
-        self.impute_cols_manual = [c for c in self.columns_to_inpute if c in X.columns]
-        self.impute_cols_auto = X.columns[X.isna().any()].tolist()
-        self.medians_manual = X[self.impute_cols_manual].median().to_dict()
-        self.medians_auto = X[self.impute_cols_auto].median().to_dict()
+        X = X.copy()
+        # explicit list from rules, but only those present
+        self.impute_cols_manual_ = [c for c in self.columns_to_impute if c in X.columns]
+        # any other columns with NaNs at fit time
+        self.impute_cols_auto_ = X.columns[X.isna().any()].tolist()
+        self.medians_manual_ = X[self.impute_cols_manual_].median(numeric_only=True).to_dict()
+        self.medians_auto_   = X[self.impute_cols_auto_].median(numeric_only=True).to_dict()
         return self
-    
+
     def transform(self, X, y=None):
         X = X.copy()
-        for col in self.impute_cols_manual:
-            mask = X[col] == self.impute_rules[col]['value']
-            X[col] = X[col].mask(mask, self.medians_manual[col])
+        to_concat = []
 
-            # Create flag column
-            X[f"{col}_median_imputed"] = mask.astype(int)
-            
-        for col in self.impute_cols_auto:
-            # Fill Median
+        # manual rules (replace sentinel -> median)
+        for col in self.impute_cols_manual_:
+            mask = (X[col] == self.impute_rules[col]['value'])
+            X.loc[mask, col] = self.medians_manual_[col]
+            to_concat.append(mask.astype(int).rename(f"{col}_median_imputed"))
+
+        # auto median for anything that still has NaNs
+        for col in self.impute_cols_auto_:
             mask = X[col].isna()
-            X[col] = X[col].fillna(self.medians_auto[col])
+            if mask.any():
+                X.loc[mask, col] = self.medians_auto_[col]
+            to_concat.append(mask.astype(int).rename(f"{col}_median_imputed"))
 
-            # Create flag
-            X[f"{col}_median_imputed"] = mask.astype(int)
-        return X
+        if to_concat:
+            X = pd.concat([X] + to_concat, axis=1)
+
+        # one final copy() defragments the frame cheaply
+        return X.copy()
         
     
 class OneHotEncoder(BaseEstimator, TransformerMixin):
@@ -321,6 +329,17 @@ class AutoTransform(BaseEstimator, TransformerMixin):
         # self._print(f"[AutoTransform] finished: {total} columns processed in {dt:.2f}s")
         return self
 
+    def _apply_once(self, name: str, col: np.ndarray) -> np.ndarray:
+        if name == 'identity':
+            return col
+        if name == 'log1p':
+            # clip to >= -1 to avoid NaNs; then log1p
+            return np.log1p(np.clip(col, -1, None))
+        if name == 'sqrt':
+            # clip to >= 0 to avoid NaNs
+            return np.sqrt(np.clip(col, 0, None))
+        return col
+
     def transform(self, X):
         X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=self._cols_)
         out_parts = []
@@ -329,10 +348,12 @@ class AutoTransform(BaseEstimator, TransformerMixin):
                 tname = self.best_per_feature_[c]
                 arr = self._apply_once(tname, X_df[c].to_numpy(dtype=float))
                 col_name = c if (tname == 'identity' and not self.suffix_identity) else f"{c}_{tname}"
+                # guard against any residual non-finite (rare but cheap)
+                arr = np.where(np.isfinite(arr), arr, 0.0)
                 out_parts.append(pd.Series(arr, index=X_df.index, name=col_name))
             else:
                 out_parts.append(X_df[c])
 
         X_out = pd.concat(out_parts, axis=1)
-        X_out = X_out[self._out_cols_]  # enforce final order
+        X_out = X_out[self._out_cols_]
         return X_out if self.return_df else X_out.to_numpy()
