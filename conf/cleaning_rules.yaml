@@ -172,11 +172,12 @@ drop_columns:
 - LNHRPC
 - PCTRMC
 - OUTHOSPPCT
+- YRCONC
 
 
 impute_rules:
   # XXXX --> median
-  NOCC:  { value: 995, fill_as: median }
+  NOCC:  { value: 996, fill_as: median }
 
 regex_for_delete: "^FINALWT\\d*$"
 
