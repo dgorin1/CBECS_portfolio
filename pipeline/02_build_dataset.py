@@ -7,7 +7,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 import json
 from transformers import (
-    TopCodeClipper, MassRecoder, MassDrop, OneHotEncoder, DropMissing, MedianImputer, CategorizeCols, AutoTransform
+    TopCodeClipper, MassRecoder, MassDrop, DropMissing, CategorizeCols, AutoTransform, OneOffRecodeToMissing,
+    DropSparse
 )
 
 # ---------- Paths & config ----------
@@ -32,6 +33,7 @@ num_cols = [c for c in TYPES["numeric_variables"] if c in df.columns]
 
 # ---------- Target engineering ( ----------
 df["LOG_MFBTU"] = np.log(df[target_col])
+target = df["LOG_MFBTU"]
 df.drop(columns=[target_col], inplace=True)
 
 # ---------- Pre-clean block (deterministic ops only) ----------
@@ -41,13 +43,29 @@ preclean = Pipeline(steps=[
     ("mass_drop", MassDrop(RULES.get("drop_columns"), RULES.get("regex_for_delete"))),
     ("mass_recodes", MassRecoder(RULES.get("recode_rules"))),
     ("top_codes", TopCodeClipper(RULES.get("top_codes"))),
+    ("One_off_recodes", OneOffRecodeToMissing(RULES.get("set_missing_rules"))),
+    ("Drop_sparse_columns", DropSparse(RULES.get("sparse_percent"))),
+
 ])
 
 df_clean = preclean.fit_transform(df)
 
+
+
+feat_transform = Pipeline(steps=[
+    ("auto", AutoTransform())
+])
+
+y = df_clean.LOG_MFBTU
+X = df_clean.drop("LOG_MFBTU",axis=1)
+
+out = feat_transform.fit_transform(X,y)
+df_clean = pd.concat([out,y], axis=1)
+
 # ---------- Persist canonical dataset (parquet) ----------
 clean_path = PROC_DIR / f"cbecs_{year}_clean.parquet"
 df_clean.to_parquet(clean_path, index=False)
+
 print(f"Saved cleaned dataset (parquet): {clean_path}")
 
 # ---------- Persist column schema (JSON) ----------
@@ -61,52 +79,3 @@ with open(schema_path, "w", encoding="utf-8") as f:
 print(f"Saved schema: {schema_path}")
 
 
-# ############# Testing
-# from sklearn.compose import ColumnTransformer
-# from sklearn.preprocessing import StandardScaler
-# from sklearn.pipeline import Pipeline
-
-# # Assign X, y 
-# X = df.drop('LOG_MFBTU', axis=1)
-# y = df['LOG_MFBTU']
-
-# # Split the data into validation, train, and test sets
-# # e.g., 80/10/10 split
-# test_size = 0.10
-# val_size  = 0.10
-# rand      = 1
-
-# # 1) Hold out test
-# X_train, X_test, y_train, y_test = train_test_split(
-#     X, y, test_size=test_size, random_state=rand, shuffle=True
-# )
-
-# # 2) From the remainder, carve out validation
-# val_rel = val_size / (1.0 - test_size)
-# X_train, X_val, y_train, y_val = train_test_split(
-#     X_train, y_train, test_size=val_rel, random_state=rand, shuffle=True
-#     )
-
-# # Check and make sure the splits worked as expected...
-# df.shape
-# check_shape = X_train.shape[0]+X_test.shape[0]+X_val.shape[0] == df.shape[0]
-
-# print(f"Split correctly: {check_shape}")
-
-
-# scale_numeric_only = ColumnTransformer(
-#     transformers=[("scale_num", StandardScaler(), num_cols)],
-#     remainder="passthrough"
-# )
-
-# preproc = Pipeline(steps=[
-#     ("median_imputer", MedianImputer(RULES["impute_rules"], num_cols)),
-#     ("auto", AutoTransform(scoring="r2", cv=5, n_jobs=-1, num_cols=num_cols, suffix_identity=False)),
-#     ("ohe", OneHotEncoder()),
-    
-# ])
-
-
-# X_arr = preproc.fit_transform(X_train, y_train)
-
-# breakpoint()

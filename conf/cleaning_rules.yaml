@@ -6,8 +6,7 @@ top_codes:
   NELVTR:     { threshold: 995, cap_to: 30 }
   LTNR24:     { threshold: 995, cap_to: 30 }
   RWSEAT:     { threshold: 99995, cap_to: 2000 }
-  PBSEAT:     { threshold: 99995, cap_to: 15000 }
-  NELVTR:     { threshold: 995,   cap_to: 30 }
+  PBSEAT:     { threshold: 999995, cap_to: 15000 }
   NESLTR:     { threshold: 995,   cap_to: 10 }
   BASEMNT:    { threshold: 995,   cap_to: 5 }
   FLCEILHT:   { threshold: 995,   cap_to: 50 }
@@ -22,6 +21,7 @@ top_codes:
   SMOFFDEVN:  { threshold: 9995,  cap_to: 500 }
   WBOARDSN:   { threshold: 9995,  cap_to: 500 }
   TVVIDEON:   { threshold: 995,   cap_to: 200 }
+
 
 
 
@@ -175,10 +175,13 @@ drop_columns:
 - YRCONC
 
 
-impute_rules:
+set_missing_rules:
   # XXXX --> median
-  NOCC:  { value: 996, fill_as: median }
-
+  NOCC:  { value: 996, fill_as: NA}
+  OWNTYPE: {value: 97, fill_as: NA}
+  
 regex_for_delete: "^FINALWT\\d*$"
 
 missing_thresh: 1
+
+sparse_percent: 0.99
