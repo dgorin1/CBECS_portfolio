@@ -728,3 +728,37 @@ class AutoTransform(BaseEstimator, TransformerMixin):
         X_out = X_out[self._out_cols_]  # enforce final order
         print("[AutoTransform] Transform complete.", flush=True)
         return X_out if self.return_df else X_out.to_numpy()
+    
+import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
+
+class Winsorizer(BaseEstimator, TransformerMixin):
+    """
+    Clip each numeric feature to [lower_quantile, upper_quantile] learned on train.
+    Example: lower=0.01, upper=0.99  (i.e., 1%/99% winsorization)
+    """
+    def __init__(self, lower=0.01, upper=0.99):
+        if not (0.0 <= lower < upper <= 1.0):
+            raise ValueError("Require 0 <= lower < upper <= 1")
+        self.lower = lower
+        self.upper = upper
+        self.lower_ = None
+        self.upper_ = None
+
+    def fit(self, X, y=None):
+        X = np.asarray(X)
+        # nan-safe quantiles (SimpleImputer already removed NaNs, but guard anyway)
+        self.lower_ = np.nanquantile(X, self.lower, axis=0)
+        self.upper_ = np.nanquantile(X, self.upper, axis=0)
+
+        # handle degenerate cases where quantiles collapse
+        tie = self.upper_ < self.lower_
+        if np.any(tie):
+            # swap where needed
+            lo, hi = self.lower_.copy(), self.upper_.copy()
+            self.lower_[tie], self.upper_[tie] = hi[tie], lo[tie]
+        return self
+
+    def transform(self, X):
+        X = np.asarray(X)
+        return np.clip(X, self.lower_, self.upper_)
