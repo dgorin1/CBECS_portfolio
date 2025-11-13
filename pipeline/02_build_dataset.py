@@ -33,6 +33,8 @@ num_cols = [c for c in TYPES["numeric_variables"] if c in df.columns]
 
 # ---------- Target engineering ( ----------
 df["LOG_MFBTU"] = np.log(df[target_col])
+df["LOG_MFBTU"] = df["LOG_MFBTU"]/df["SQFT"]
+df = df.drop("SQFT", axis=1)
 target = df["LOG_MFBTU"]
 df.drop(columns=[target_col], inplace=True)
 
