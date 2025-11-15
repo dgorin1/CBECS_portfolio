@@ -13,6 +13,7 @@ data/
 *.parquet
 *.feather
 *.zip
+*.pkl
 
 # OS/editor noise
 .DS_Store
