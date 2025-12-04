@@ -14,39 +14,70 @@ The repository is organized as follows:
 
 ## Getting Started
 
-### Prerequisites
+There are two ways to run this project: using Docker (recommended) or setting up a local Python environment.
 
-- Python 3.x
-- pip (Python package installer)
+### Running with Docker
 
-### Installation
+This is the recommended method as it handles all dependencies and setup automatically.
 
-1. Clone the repository:
+1.  **Build the Docker image:**
 
-   ```bash
-   git clone https://github.com/your-username/CBECS_portfolio.git
-   cd CBECS_portfolio
-   ```
+    From the project root, run the following command to build the image:
 
-2. Create a virtual environment (recommended):
+    ```bash
+    docker build -t cbecs-pipeline .
+    ```
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   ```
+2.  **Run the pipeline:**
 
-3. Install the required packages:
+    This command runs the entire pipeline inside the container. It mounts the local `data` and `notebooks/artifacts` directories, allowing the container to process your data and save the resulting models and metrics back to your local filesystem.
 
-   ```bash
-   pip install -r requirements.txt
-  
-4. Run the pipeline
-   ```bash
-   bash pipeline/run_pipeline.bash
-   ```
+    ```bash
+    docker run --rm \
+      -v "$(pwd)/data:/app/data" \
+      -v "$(pwd)/notebooks/artifacts:/app/notebooks/artifacts" \
+      cbecs-pipeline
+    ```
+
+### Local Python Setup
+
+If you prefer to run the project locally without Docker, follow these steps.
+
+**Prerequisites:**
+
+- Python 3.11
+- `pip` (Python package installer)
+
+**Installation:**
+
+1.  Clone the repository:
+
+    ```bash
+    git clone https://github.com/your-username/CBECS_portfolio.git
+    cd CBECS_portfolio
+    ```
+
+2.  Create and activate a virtual environment:
+
+    ```bash
+    python3 -m venv env
+    source env/bin/activate  # On Windows, use `env\Scripts\activate`
+    ```
+
+3.  Install the required packages:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  Run the pipeline:
+
+    ```bash
+    bash pipeline/run_pipeline.bash
+    ```
 
 ## Usage
 
-- Explore the Jupyter notebooks in the `notebooks/` directory to understand the data and analyses.
-- Run the scripts in the `src/` directory to reproduce data processing and modeling steps.
-- View the generated reports in the `reports/` directory for summaries of findings.
+- Once the pipeline has run, explore the Jupyter notebooks in the `notebooks/` directory to understand the data and final models.
+- The final trained models are saved in `notebooks/artifacts/`.
+- The final reports can be viewed in the `reports/` directory.
