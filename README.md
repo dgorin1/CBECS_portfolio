@@ -1,4 +1,4 @@
-# CBECS Project
+# CBECS Regression Project
 
 This repository contains a collection of analyses and visualizations related to the Commercial Buildings Energy Consumption Survey (CBECS) data. The CBECS is a national sample survey conducted by the U.S. Energy Information Administration (EIA) that collects information on the energy consumption of commercial buildings.
 
