@@ -40,8 +40,9 @@ The repository is organized as follows:
    ```bash
    pip install -r requirements.txt
   
-4. Run the pipeline at
-   ./src/pipeline/run_pipeline.bash
+4. Run the pipeline
+   ```bash
+   ./pipeline/run_pipeline.bash
    ```
 
 ## Usage
