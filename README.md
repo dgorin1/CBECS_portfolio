@@ -42,7 +42,7 @@ The repository is organized as follows:
   
 4. Run the pipeline
    ```bash
-   ./pipeline/run_pipeline.bash
+   bash pipeline/run_pipeline.bash
    ```
 
 ## Usage
