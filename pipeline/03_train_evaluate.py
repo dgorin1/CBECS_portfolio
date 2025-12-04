@@ -14,6 +14,7 @@ import pandas as pd
 import yaml
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer, make_column_selector as selector
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Lasso, LassoCV, LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
@@ -26,6 +27,12 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import (
+    OneHotEncoder,
+    PowerTransformer,
+    StandardScaler,
+)
+from transformers import Winsorizer
 
 try:
     from xgboost import XGBRegressor  # type: ignore
@@ -46,6 +53,7 @@ print(f"[INFO] Project root resolved to: {PROJ}")
 
 CFG = yaml.safe_load(open(PROJ / "conf" / "config.yaml"))
 VAR_TYPES = yaml.safe_load(open(PROJ / "conf" / "variable_types.yaml"))
+HP_CFG = yaml.safe_load(open(PROJ / "conf" / "hyperparameters.yaml"))
 
 RAW_DIR = PROJ / CFG["data"]["raw_dir"]
 PROC_DIR = PROJ / CFG["data"]["processed_dir"]
@@ -98,6 +106,11 @@ def load_dataset(
     df = pd.read_parquet(path)
     print(f"[INFO] Loaded dataset with shape {df.shape}")
 
+    # Ensure categorical columns have 'object' dtype for consistent processing
+    cat_cols = [c for c in VAR_TYPES["categorical_variables"] if c in df.columns]
+    df[cat_cols] = df[cat_cols].astype(object)
+    print("[INFO] Ensured categorical columns have object dtype.")
+
     if target not in df.columns:
         raise KeyError(f"Target column '{target}' not found in data.")
     print(f"[INFO] Using target column: '{target}'")
@@ -116,19 +129,20 @@ def train_val_test_split(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
     """Mirror the 80 / 10 / 10 split used in the notebook."""
     print("[STEP] Creating train/val/test split (80/10/10)...")
-    X_train, X_test, y_train, y_test = train_test_split(
+    # 1) Hold out test set (10%)
+    X_rem, X_test, y_rem, y_test = train_test_split(
         X,
         y,
         test_size=test_size,
         random_state=random_state,
         shuffle=True,
     )
-
-    # Validation size is relative to remaining pool
+    
+    # 2) Split remainder into train (80%) and validation (10%)
     val_rel = val_size / (1.0 - test_size)
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train,
-        y_train,
+        X_rem,
+        y_rem,
         test_size=val_rel,
         random_state=random_state,
         shuffle=True,
@@ -160,7 +174,7 @@ def build_preprocessor() -> ColumnTransformer:
     * dtype-based selectors, no hard-coded column names
     """
     print("[STEP] Building preprocessing pipeline (numeric + categorical)...")
-    num_pipe = Pipeline(
+    num_pipe = Pipeline(  # Match the simpler pipeline from the notebook
         steps=[
             ("median_imputer", SimpleImputer(strategy="median", add_indicator=True)),
             ("scaler", StandardScaler()),
@@ -278,7 +292,7 @@ def fit_final_lasso(
     rkf = RepeatedKFold(n_splits=5, n_repeats=5, random_state=random_state)
 
     # Inner CV for alpha
-    inner = KFold(n_splits=5, shuffle=True, random_state=random_state)
+    inner = RepeatedKFold(n_splits=5, n_repeats=5, random_state=random_state)
 
     lasso_nested = Pipeline(
         steps=[
@@ -317,6 +331,39 @@ def fit_final_lasso(
 
 
 # ---------------------------------------------------------------------------
+# Random Forest – Load tuned params, build model
+# ---------------------------------------------------------------------------
+
+
+def get_rf_params() -> Dict:
+    """Load best RF hyperparameters from the notebook tuning run."""
+    params_path = ARTIFACTS / "rf_optuna_best_params.json"
+    if not params_path.exists():
+        raise FileNotFoundError(
+            f"RF hyperparameter file not found at {params_path}. "
+            "Please run the notebook '02_build_train.ipynb' to generate it."
+        )
+
+    print(f"[RF] Loading tuned params from {params_path}")
+    with open(params_path) as f:
+        params = json.load(f)
+
+    # Remove Optuna-internal keys if they exist
+    params.pop("use_pruning", None)
+    return params
+
+
+def build_rf_model(preproc: ColumnTransformer, params: Dict) -> Pipeline:
+    """Build a Random Forest pipeline with given preprocessor and params."""
+    rf = RandomForestRegressor(
+        random_state=1,
+        n_jobs=-1,
+        **params,
+    )
+    return Pipeline([("preproc", clone(preproc)), ("model", rf)])
+
+
+# ---------------------------------------------------------------------------
 # XGBoost – Optuna-tuned wrapper (optional)
 # ---------------------------------------------------------------------------
 
@@ -350,15 +397,17 @@ def tune_xgb(
     rkf = RepeatedKFold(n_splits=5, n_repeats=5, random_state=random_state)
 
     def objective(trial: optuna.Trial) -> float:
+        # Use the same refined search space as the notebook
         params = {
             "n_estimators": trial.suggest_int("n_estimators", 600, 1400),
-            "max_depth": trial.suggest_int("max_depth", 3, 8),
+            "max_depth": trial.suggest_int("max_depth", 3, 6),
             "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.05, log=True),
-            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
-            "min_child_weight": trial.suggest_float("min_child_weight", 1.0, 10.0),
-            "reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True),
-            "reg_alpha": trial.suggest_float("reg_alpha", 1e-4, 1.0, log=True),
+            "min_child_weight": trial.suggest_int("min_child_weight", 5, 25),
+            "subsample": trial.suggest_float("subsample", 0.4, 0.8),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.7, 1.0),
+            "reg_lambda": trial.suggest_float("reg_lambda", 0.1, 3.0, log=True),
+            "reg_alpha": trial.suggest_float("reg_alpha", 1e-4, 0.05, log=True),
+            "gamma": trial.suggest_float("gamma", 0.0, 1.0),
         }
 
         pipe = build_xgb_model(preproc, params)
@@ -465,15 +514,7 @@ def run_training(
         feature="SQFT_log1p",
         split="val",
     )
-    m_test_mean, m_test_lr = baseline_with_sqft(
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        feature="SQFT_log1p",
-        split="test",
-    )
-    metrics.extend([m_val_mean, m_val_lr, m_test_mean, m_test_lr])
+    metrics.extend([m_val_mean, m_val_lr])
 
     # ------------------------------------------------------------------
     # Lasso
@@ -485,7 +526,24 @@ def run_training(
     print(f"[INFO] Saved Lasso model to: {lasso_path}")
 
     metrics.append(eval_model("lasso_final", final_lasso, X_val, y_val, split="val"))
-    metrics.append(eval_model("lasso_final", final_lasso, X_test, y_test, split="test"))
+
+    # ------------------------------------------------------------------
+    # Random Forest
+    # ------------------------------------------------------------------
+    print("=== Preparing Random Forest pipeline ===")
+    try:
+        rf_params = get_rf_params()
+        final_rf = build_rf_model(preproc, rf_params)
+        print("[STEP] Fitting RF pipeline on training data...")
+        final_rf.fit(X_train, y_train)
+
+        rf_path = ARTIFACTS / "model_rf.joblib"
+        joblib.dump(final_rf, rf_path)
+        print(f"[INFO] Saved RF model to: {rf_path}")
+
+        metrics.append(eval_model("rf_final", final_rf, X_val, y_val, split="val"))
+    except Exception as exc:
+        print(f"[WARN] Skipping RF training due to error: {exc!r}")
 
     # ------------------------------------------------------------------
     # XGBoost (optional; requires xgboost installed)
@@ -503,7 +561,6 @@ def run_training(
             print(f"[INFO] Saved XGB model to: {xgb_path}")
 
             metrics.append(eval_model("xgb_final", final_xgb, X_val, y_val, split="val"))
-            metrics.append(eval_model("xgb_final", final_xgb, X_test, y_test, split="test"))
         except Exception as exc:  # pragma: no cover - defensive
             print(f"[WARN] Skipping XGB training due to error: {exc!r}")
     else:
